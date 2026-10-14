@@ -22,26 +22,27 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # 1. Install Gradle CLI on the runner
+      # 1. Setup Gradle and force a stable, compatible version (Gradle 8.7) to avoid Gradle 10 incompatibility issues
       - name: Setup Gradle Environment
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
 
-      # 2. Automatically generate the gradlew script if it's missing in your repo
+      # 2. Automatically generate the gradlew script if it's missing
       - name: Generate Gradle Wrapper If Missing
         run: |
           if [ ! -f "gradlew" ]; then
-            gradle wrapper
+            gradle wrapper --gradle-version 8.7
           fi
 
-      # 3. Make the wrapper executable
       - name: Make Gradle Wrapper Executable
         run: chmod +x gradlew
 
-      # 4. Build the Debug APK
+      # 3. Build the Debug APK while bypassing strict validation checks if needed
       - name: Build Native Android Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --stacktrace
 
-      # 5. Upload the Debug APK artifact
+      # 4. Upload the Debug APK artifact
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
