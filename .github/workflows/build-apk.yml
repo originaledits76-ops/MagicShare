@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+S  build:
     name: Build Debug APK
     runs-on: ubuntu-latest
 
@@ -33,6 +33,12 @@ jobs:
 
       - name: Make Gradle Wrapper Executable
         run: chmod +x gradlew
+
+      # Generates a standard default debug keystore if it doesn't exist to prevent signing errors
+      - name: Generate Default Debug Keystore
+        run: |
+          mkdir -p ~/.android
+          keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" || true
 
       - name: Build Native Android Debug APK
         run: ./gradlew assembleDebug
