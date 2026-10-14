@@ -2,10 +2,15 @@ name: Build Debug APK
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
+
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
+
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -19,32 +24,54 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: "17"
 
       - name: Setup Gradle Environment
         uses: gradle/actions/setup-gradle@v3
 
       - name: Generate Gradle Wrapper If Missing
         run: |
-          if [ ! -f "gradlew" ]; then
+          if [ ! -f "./gradlew" ]; then
             gradle wrapper
           fi
 
       - name: Make Gradle Wrapper Executable
-        run: chmod +x gradlew
+        run: chmod +x ./gradlew
 
-      # Generates a standard default debug keystore if it doesn't exist to prevent signing errors
-      - name: Generate Default Debug Keystore
+      - name: Generate Project Debug Keystore
         run: |
-          mkdir -p ~/.android
-          keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" || true
+          if [ ! -f "$GITHUB_WORKSPACE/debug.keystore" ]; then
+            keytool -genkeypair -v \
+              -keystore "$GITHUB_WORKSPACE/debug.keystore" \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Verify Debug Keystore
+        run: |
+          if [ ! -f "$GITHUB_WORKSPACE/debug.keystore" ]; then
+            echo "ERROR: debug.keystore was not created."
+            exit 1
+          fi
+
+          keytool -list \
+            -keystore "$GITHUB_WORKSPACE/debug.keystore" \
+            -storepass android \
+            -alias androiddebugkey
 
       - name: Build Native Android Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk
-          path: '**/build/outputs/apk/debug/*.apk'
+          path: "**/build/outputs/apk/debug/*.apk"
+          if-no-files-found: error
+          retention-days: 7
