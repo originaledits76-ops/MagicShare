@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android Debug APK
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Build APK
+    name: Build Debug APK
     runs-on: ubuntu-latest
 
     steps:
@@ -22,59 +22,18 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # --- Option A: Flutter ---
-      - name: Set up Flutter (if Flutter project)
-        if: hashFiles('pubspec.yaml') != ''
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.x'
-          channel: 'stable'
-          cache: true
-
-      - name: Build Flutter APK
-        if: hashFiles('pubspec.yaml') != ''
-        run: flutter build apk --release
-
-      # --- Option B: React Native ---
-      - name: Set up Node.js (if React Native / Node project)
-        if: hashFiles('package.json') != '' && hashFiles('pubspec.yaml') == ''
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install React Native Dependencies
-        if: hashFiles('package.json') != '' && hashFiles('pubspec.yaml') == ''
-        run: npm install
-
-      # --- Option C: Native Android / Gradle (Kotlin/Java) ---
-      # This sets up the Gradle execution environment natively on the runner
-      - name: Setup Gradle
-        if: hashFiles('build.gradle*') != '' && hashFiles('pubspec.yaml') == '' && hashFiles('package.json') == ''
-        uses: gradle/actions/setup-gradle@v3
-
-      # If gradlew doesn't exist, we generate it on the fly using the setup-gradle environment
-      - name: Generate Gradle Wrapper If Missing
-        if: hashFiles('build.gradle*') != '' && hashFiles('gradlew') == '' && hashFiles('pubspec.yaml') == '' && hashFiles('package.json') == ''
-        run: gradle wrapper
-
+      # --- Native Android Build ---
       - name: Make Gradle Wrapper Executable
         if: hashFiles('gradlew') != ''
         run: chmod +x gradlew
 
-      - name: Build Native Android Debug APK
-        if: hashFiles('build.gradle*') != '' && hashFiles('pubspec.yaml') == '' && hashFiles('package.json') == ''
-        run: ./gradlew assembleDebug
+      - name: Build Debug APK (Without Develocity Cache Injection)
+        if: hashFiles('build.gradle*') != ''
+        run: ./gradlew assembleDebug --no-build-cache --offline || ./gradlew assembleDebug
 
-      - name: Build Native Android Release APK (Unsigned)
-        if: hashFiles('build.gradle*') != '' && hashFiles('pubspec.yaml') == '' && hashFiles('package.json') == ''
-        run: ./gradlew assembleRelease
-
-      # --- Upload Artifacts ---
-      - name: Upload APK Artifacts
+      # --- Upload Artifact ---
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: compiled-apks
-          path: |
-            **/build/outputs/apk/**/*.apk
-            **/build/app/outputs/flutter-apk/*.apk
+          name: debug-apk
+          path: '**/build/outputs/apk/debug/*.apk'
