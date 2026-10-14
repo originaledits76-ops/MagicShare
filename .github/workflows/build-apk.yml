@@ -1,0 +1,76 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch: # Allows manual triggering from GitHub UI
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Java Development Kit (JDK 17 is standard for modern Android)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # 3. Detect and Build based on Project Type
+      
+      # --- Option A: Flutter ---
+      - name: Set up Flutter (if Flutter project)
+        if: hashFiles('pubspec.yaml') != ''
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Build Flutter APK
+        if: hashFiles('pubspec.yaml') != ''
+        run: flutter build apk --release
+
+      # --- Option B: React Native ---
+      - name: Set up Node.js (if React Native / Node project)
+        if: hashFiles('package.json') != '' && hashFiles('pubspec.yaml') == ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install React Native Dependencies
+        if: hashFiles('package.json') != '' && hashFiles('pubspec.yaml') == ''
+        run: npm install
+
+      # --- Option C: Native Android / Gradle (Kotlin/Java) ---
+      - name: Grant execute permission for gradlew
+        if: hashFiles('gradlew') != ''
+        run: chmod +x gradlew
+
+      - name: Build Native Android Debug APK
+        if: hashFiles('build.gradle*') != '' && hashFiles('pubspec.yaml') == '' && hashFiles('package.json') == ''
+        run: ./gradlew assembleDebug
+
+      - name: Build Native Android Release APK (Unsigned)
+        if: hashFiles('build.gradle*') != '' && hashFiles('pubspec.yaml') == '' && hashFiles('package.json') == ''
+        run: ./gradlew assembleRelease
+
+      # 4. Upload APK Artifacts
+      # Automatically finds and uploads APKs regardless of the framework used
+      - name: Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiled-apks
+          path: |
+            **/build/outputs/apk/**/*.apk
+            **/build/app/outputs/flutter-apk/*.apk
+            
