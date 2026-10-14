@@ -1,4 +1,4 @@
-name: Build Android Debug APK
+name: Build Debug APK
 
 on:
   push:
@@ -22,16 +22,26 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # --- Native Android Build ---
+      # 1. Install Gradle CLI on the runner
+      - name: Setup Gradle Environment
+        uses: gradle/actions/setup-gradle@v3
+
+      # 2. Automatically generate the gradlew script if it's missing in your repo
+      - name: Generate Gradle Wrapper If Missing
+        run: |
+          if [ ! -f "gradlew" ]; then
+            gradle wrapper
+          fi
+
+      # 3. Make the wrapper executable
       - name: Make Gradle Wrapper Executable
-        if: hashFiles('gradlew') != ''
         run: chmod +x gradlew
 
-      - name: Build Debug APK (Without Develocity Cache Injection)
-        if: hashFiles('build.gradle*') != ''
-        run: ./gradlew assembleDebug --no-build-cache --offline || ./gradlew assembleDebug
+      # 4. Build the Debug APK
+      - name: Build Native Android Debug APK
+        run: ./gradlew assembleDebug
 
-      # --- Upload Artifact ---
+      # 5. Upload the Debug APK artifact
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
