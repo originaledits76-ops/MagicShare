@@ -1,0 +1,6 @@
+{
+  "name": "FistShot",
+  "description": "Gesture-driven screenshot capture and cross-device peer-to-peer transfer application",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
